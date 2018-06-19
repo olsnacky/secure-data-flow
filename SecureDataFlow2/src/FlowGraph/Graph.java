@@ -195,8 +195,10 @@ public /* partial */ class Graph implements NodeMap
         for (Node node : nodes)
             System.out.println("\t" + node.dotty() + "[label=\""+node.toString() + "\"];");
         
-        for (MethodCall method : methods)
-            System.out.println("\t" + method.dotty() + ";");
+        for (MethodCall method : methods) {
+        	// don't print this out cos buggy and not needed?
+//            System.out.println("\t" + method.dotty() + ";");
+        }
 
         System.out.println("}");
     }   
