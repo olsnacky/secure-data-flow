@@ -67,6 +67,28 @@ public class DataflowVisitor extends ASTVisitor
         }
     }
     
+    // we use this check so that we can compare method bindings across compilation units
+    public static boolean hasMethod(IMethodBinding methodBinding) {
+    	for (IMethodBinding b : QUT.DataflowVisitor.methods.keySet()) {
+    		if (b.isEqualTo(methodBinding)) {
+    			return true;
+    		}
+    	}
+    	
+    	return false;
+    }
+
+    // we use this check so that we can compare method bindings across compilation units
+    public static MethodFoo getMethod(IMethodBinding methodBinding) {
+    	for (IMethodBinding b : QUT.DataflowVisitor.methods.keySet()) {
+    		if (b.isEqualTo(methodBinding)) {
+    			return QUT.DataflowVisitor.methods.get(b);
+    		}
+    	}
+    	
+    	return null;
+    }
+    
     // ---------------------------------------------------------------------------------------------------------------------------
 
     @Override
@@ -329,7 +351,8 @@ public class DataflowVisitor extends ASTVisitor
             args.add(GetDataflowNode((Expression)arg));
         
         Node expr = new ExpressionNode(node);
-        current_method.graph.AddMethodCallNode(node,  node.resolveMethodBinding(), recv, args, expr, null); 
+        IMethodBinding binding = node.resolveMethodBinding();
+        current_method.graph.AddMethodCallNode(node,  binding, recv, args, expr, null); 
         SetDataflowNode(node, expr);         
     }  
 
