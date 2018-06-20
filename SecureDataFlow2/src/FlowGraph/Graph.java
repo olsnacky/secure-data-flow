@@ -15,6 +15,10 @@ public /* partial */ class Graph implements NodeMap
     boolean changed;
     boolean inconsistent;
     
+    // high and low node singletons
+    private Node high = new ExpressionNode("HIGH");
+    private Node low = new ExpressionNode("LOW");
+    
     // Edges
     public List<MethodCall> methods = new ArrayList<MethodCall>();
     public List<ControlFlowEdge> controlFlowEdges = new ArrayList<ControlFlowEdge>();
@@ -195,8 +199,10 @@ public /* partial */ class Graph implements NodeMap
         for (Node node : nodes)
             System.out.println("\t" + node.dotty() + "[label=\""+node.toString() + "\"];");
         
-        for (MethodCall method : methods)
-            System.out.println("\t" + method.dotty() + ";");
+        for (MethodCall method : methods) {
+        	// don't print this out cos buggy and not needed?
+//            System.out.println("\t" + method.dotty() + ";");
+        }
 
         System.out.println("}");
     }   
@@ -296,10 +302,13 @@ public /* partial */ class Graph implements NodeMap
                 }
                 else
                 {
-                    for (DataFlowEdge typeflow : new ArrayList<DataFlowEdge>(dataFlowEdges))
-                        if (typeflow.src instanceof TypeNode && typeflow.dest == method.recv)
-                            if (QUT.DataflowVisitor.methods.containsKey(method.method))
-                                InlineMethodCall(method, (TypeNode)typeflow.src);
+                    for (DataFlowEdge typeflow : new ArrayList<DataFlowEdge>(dataFlowEdges)) {
+                        if (typeflow.src instanceof TypeNode && typeflow.dest == method.recv) {
+                        		if (QUT.DataflowVisitor.hasMethod(method.method)) {
+                        			InlineMethodCall(method, (TypeNode)typeflow.src);
+                        		}
+                        }
+                    }
                 }
         }
 
@@ -322,7 +331,7 @@ public /* partial */ class Graph implements NodeMap
 
         method_invocation.already_expanded.add(C);
         // Fixme - your TypeNode C
-        MethodFoo method_body = QUT.DataflowVisitor.methods.get(method_invocation.method);
+        MethodFoo method_body = QUT.DataflowVisitor.getMethod(method_invocation.method);
 
         SubGraph cloned = GetContour(method_body, method_invocation);
         MethodContext cloned_method = cloned.context;
@@ -339,6 +348,13 @@ public /* partial */ class Graph implements NodeMap
             AddDataFlowEdge(method_invocation.args.get(i), cloned_method.args.get(i));
 
         AddDataFlowEdge(cloned_method.return_value, method_invocation.return_value);
+        if (method_invocation.method.getName().equals("readHigh")) {
+        	AddDataFlowEdge(high, method_invocation.return_value);
+        } else if (method_invocation.method.getName().equals("writeLow")) {
+        	for (Node arg : new ArrayList<Node>(method_invocation.args)) {
+        		AddDataFlowEdge(arg, low);
+        	}
+        }
 
         //AddControlFlowEdges(method_invocation.pc, cloned_method.sp); // Fixme: propagate control flow from method call to method body        
     }    
@@ -353,9 +369,9 @@ public /* partial */ class Graph implements NodeMap
         method_invocation.already_expanded.add(null);
 
         // Fixme - implicit constructor
-        if (QUT.DataflowVisitor.methods.containsKey(method_invocation.method))
+        if (QUT.DataflowVisitor.hasMethod(method_invocation.method))
         {
-            MethodFoo method_body = QUT.DataflowVisitor.methods.get(method_invocation.method);
+            MethodFoo method_body = QUT.DataflowVisitor.getMethod(method_invocation.method);
 
             MethodContext cloned_method = GetContour(method_body, method_invocation).context;
 

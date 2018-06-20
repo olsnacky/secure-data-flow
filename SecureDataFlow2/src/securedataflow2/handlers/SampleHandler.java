@@ -31,7 +31,7 @@ public class SampleHandler extends AbstractHandler {
 
     private void AnalyseCompilationUnit(ICompilationUnit unit) throws JavaModelException
     {
-        ASTParser parser = ASTParser.newParser(AST.JLS8);
+        ASTParser parser = ASTParser.newParser(AST.JLS10);
         parser.setResolveBindings(true);
         parser.setSource(unit);
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
