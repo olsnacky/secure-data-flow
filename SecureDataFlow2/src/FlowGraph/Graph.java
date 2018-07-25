@@ -350,9 +350,15 @@ public /* partial */ class Graph implements NodeMap
         AddDataFlowEdge(cloned_method.return_value, method_invocation.return_value);
         if (method_invocation.method.getName().equals("readHigh")) {
         	AddDataFlowEdge(high, method_invocation.return_value);
+        } else if (method_invocation.method.getName().equals("readLow")) {
+        	AddDataFlowEdge(low, method_invocation.return_value);
         } else if (method_invocation.method.getName().equals("writeLow")) {
         	for (Node arg : new ArrayList<Node>(method_invocation.args)) {
         		AddDataFlowEdge(arg, low);
+        	}
+        } else if (method_invocation.method.getName().equals("writeHigh")) {
+        	for (Node arg : new ArrayList<Node>(method_invocation.args)) {
+        		AddDataFlowEdge(arg, high);
         	}
         }
 
