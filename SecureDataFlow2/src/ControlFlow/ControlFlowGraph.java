@@ -334,6 +334,9 @@ public class ControlFlowGraph
         case "ForStatement":
             srcExpr = ((ForStatement)src).getExpression();
             break;
+        case "EnhancedForStatement":
+        	srcExpr = ((EnhancedForStatement)src).getExpression();
+            break;
         case "WhileStatement":
             srcExpr = ((WhileStatement)src).getExpression();
             break;
@@ -366,7 +369,11 @@ public class ControlFlowGraph
             for (Object init : ((ForStatement)dst).initializers())
                 AddControlDependence(srcExpr, (Expression)init);
             // Fixme: increment expressions
-            break;            
+            break;
+        case "EnhancedForStatement":
+            AddControlDependence(srcExpr, ((EnhancedForStatement)dst).getExpression());
+            // Fixme: increment expressions
+            break; 
         case "SwitchCase":
         case "BreakStatement":
             break;
