@@ -144,6 +144,11 @@ public class DataflowVisitor extends ASTVisitor
         }   
         SetDataflowNode(node, exp); // no actual value, so no in flows needed???
     }  
+    
+    @Override
+    public boolean visit(ImportDeclaration node) {
+    	return false;
+    }
 
     @Override
     public void endVisit(SimpleName node)
