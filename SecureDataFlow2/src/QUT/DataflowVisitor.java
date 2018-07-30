@@ -97,6 +97,16 @@ public class DataflowVisitor extends ASTVisitor {
 		// assume implementation only implement one contract
 		DataflowVisitor.moduleMappings.get(contractName).add((QualifiedName) node.implementations().get(0));
 	}
+	
+//	@Override
+//	public void endVisit(EnhancedForStatement node) {
+//		super.endVisit(node);
+//		Node expr = GetDataflowNode(node.getExpression());
+//		Node var = GetNode(node.getParameter().resolveBinding());
+//		current_method.graph.AddControlFlowEdge(expr, var);
+////		current_method.graph.AddControlFlowEdge(args, exp);
+////		SetDataflowNode(node, exp);
+//	}
 
 	@Override
 	public void endVisit(Assignment node) {

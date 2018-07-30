@@ -109,13 +109,13 @@ public class ControlFlowVisitor extends ASTVisitor
         PreTestedLoop(node, node.getBody());
     }
     
-    @Override
-    public void endVisit(EnhancedForStatement node)
-    {
-        // for ( Declaration Initializers; Condition; Incrementors ) Statement
-        super.endVisit(node);
-        PreTestedLoop(node, node.getBody());
-    }
+//    @Override
+//    public void endVisit(EnhancedForStatement node)
+//    {
+//        // for ( Declaration Initializers; Condition; Incrementors ) Statement
+//        super.endVisit(node);
+//        PreTestedLoop(node, node.getBody());
+//    }
 
     @Override
     public void endVisit(SwitchStatement node)
