@@ -7,13 +7,19 @@ import org.eclipse.jdt.core.dom.*;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class DataflowVisitor extends ASTVisitor {
 	private MethodFoo current_method;
 	public Node this_node;
 
-	public static Map<QualifiedName, List<QualifiedName>> moduleMappings = new Hashtable<QualifiedName, List<QualifiedName>>();
+	public static Map<QualifiedName, QualifiedName> moduleMappings = new Hashtable<QualifiedName, QualifiedName>();
+	// public static Map<QualifiedName, Map<QualifiedName, Boolean>> verifications =
+	// new Hashtable<QualifiedName, Map<QualifiedName, Boolean>>();
+	public static List<IMethodBinding> requiresVerification = new ArrayList<IMethodBinding>();
+
 	public static Map<IBinding, Node> nodes = new Hashtable<IBinding, Node>();
 	public static Map<IMethodBinding, MethodFoo> methods = new Hashtable<IMethodBinding, MethodFoo>();
 
@@ -27,11 +33,87 @@ public class DataflowVisitor extends ASTVisitor {
 		}
 	}
 
+	public static void Verify() {
+		// create entries for implementations to be verified
+		// for (Map.Entry<QualifiedName, List<QualifiedName>> moduleMapping :
+		// moduleMappings.entrySet()) {
+		// // iterate over our methods
+		// for (QualifiedName impQN : moduleMapping.getValue()) {
+		// verifications.put(impQN, new Hashtable<QualifiedName,Boolean>());
+		// }
+		// }
+
+		for (IMethodBinding impMethod : requiresVerification) {
+			QualifiedName contractName = GetImplementationContractName(
+					impMethod.getDeclaringClass().getQualifiedName());
+			Map.Entry<IMethodBinding, MethodFoo> contractMethod = GetContractMethod(contractName.toString(),
+					impMethod.getName());
+
+			if (contractMethod == null) {
+				System.out
+						.println("Cannot verify " + impMethod + " as there is no corresponding method in the contract");
+				break;
+			} else {
+				IMethodBinding contractMethodBinding = contractMethod.getKey();
+				System.out.println(
+						"Will verify " + impMethod.getDeclaringClass().getQualifiedName() + ":" + impMethod.getName()
+								+ " against " + contractMethodBinding.getDeclaringClass().getQualifiedName() + ":"
+								+ contractMethodBinding.getName());
+			}
+		}
+		// for (Map.Entry<IMethodBinding, MethodFoo> m : methods.entrySet()) {
+		// // iterate over the mapped implementations
+		// for (QualifiedName impQN : moduleMapping.getValue()) {
+		// String mClass = m.getKey().getDeclaringClass().getQualifiedName();
+		// // if the method class is the same as our implementation
+		// if (impQN.toString().equals(mClass)) {
+		// // iterate over our methods to find the contract version
+		// for (Map.Entry<IMethodBinding, MethodFoo> mm : methods.entrySet()) {
+		// String cClass = mm.getKey().getDeclaringClass().getQualifiedName();
+		// if (moduleMapping.getKey().toString().equals(cClass)) {
+		// if (m.getKey().getName().equals(mm.getKey().getName())) {
+		// String implementationMethodName = mClass + ":" + m.getKey().getName();
+		// if (!verified.contains(implementationMethodName)) {
+		// System.out.println("Compare implementation " + implementationMethodName + "
+		// to contract " + cClass + ":" + mm.getKey().getName());
+		// verified.add(implementationMethodName);
+		// }
+		// }
+		// }
+		// }
+		// }
+		// }
+		// }
+		// }
+	}
+
 	public void Dump() {
 		for (Map.Entry<IMethodBinding, MethodFoo> m : methods.entrySet()) {
 			System.out.println("  Method " + m.getKey().getDeclaringClass().getQualifiedName() + "::" + m.getKey());
 			m.getValue().graph.Print();
 		}
+	}
+
+	public static QualifiedName GetImplementationContractName(String implementationName) {
+		for (Map.Entry<QualifiedName, QualifiedName> moduleMapping : moduleMappings.entrySet()) {
+			if (moduleMapping.getKey().toString().equals(implementationName)) {
+				return moduleMapping.getValue();
+			}
+		}
+
+		return null;
+	}
+
+	public static Map.Entry<IMethodBinding, MethodFoo> GetContractMethod(String contractName, String methodName) {
+		for (Map.Entry<IMethodBinding, MethodFoo> m : methods.entrySet()) {
+			IMethodBinding binding = m.getKey();
+			if (binding.getDeclaringClass().getQualifiedName().equals(contractName)
+					&& binding.getName().toString().equals(methodName)) {
+				return m;
+			}
+		}
+
+		return null;
 	}
 
 	public static Node GetDataflowNode(ASTNode node) {
@@ -82,31 +164,37 @@ public class DataflowVisitor extends ASTVisitor {
 
 		return null;
 	}
+	
+	private static boolean hasMethodBinding(List<IMethodBinding> bindings, IMethodBinding binding) {
+		for (IMethodBinding b : bindings) {
+			if (b.isEqualTo(binding)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 
 	// ---------------------------------------------------------------------------------------------------------------------------
 
 	@Override
 	public void endVisit(ProvidesDirective node) {
 		super.endVisit(node);
-
 		QualifiedName contractName = (QualifiedName) node.getName();
-		if (!DataflowVisitor.moduleMappings.containsKey(contractName)) {
-			DataflowVisitor.moduleMappings.put(contractName, new ArrayList<QualifiedName>());
-		}
-
 		// assume implementation only implement one contract
-		DataflowVisitor.moduleMappings.get(contractName).add((QualifiedName) node.implementations().get(0));
+		QualifiedName implementationName = (QualifiedName) node.implementations().get(0);
+		DataflowVisitor.moduleMappings.put(implementationName, contractName);
 	}
-	
-//	@Override
-//	public void endVisit(EnhancedForStatement node) {
-//		super.endVisit(node);
-//		Node expr = GetDataflowNode(node.getExpression());
-//		Node var = GetNode(node.getParameter().resolveBinding());
-//		current_method.graph.AddControlFlowEdge(expr, var);
-////		current_method.graph.AddControlFlowEdge(args, exp);
-////		SetDataflowNode(node, exp);
-//	}
+
+	// @Override
+	// public void endVisit(EnhancedForStatement node) {
+	// super.endVisit(node);
+	// Node expr = GetDataflowNode(node.getExpression());
+	// Node var = GetNode(node.getParameter().resolveBinding());
+	// current_method.graph.AddControlFlowEdge(expr, var);
+	//// current_method.graph.AddControlFlowEdge(args, exp);
+	//// SetDataflowNode(node, exp);
+	// }
 
 	@Override
 	public void endVisit(Assignment node) {
@@ -461,6 +549,24 @@ public class DataflowVisitor extends ASTVisitor {
 
 		current_method.context.recv = this_node = new LocalNode("this");
 		current_method.context.return_value = new LocalNode("return");
+
+		// if implementation method, register as needing verification
+		// relied on the module descriptor being analysed first
+		for (Object modifier : node.modifiers()) {
+			if (((IExtendedModifier) modifier).isModifier()) {
+				if (((Modifier) modifier).isPublic()) {
+					for (Map.Entry<QualifiedName, QualifiedName> mm : moduleMappings.entrySet()) {
+						if (mm.getKey().toString().equals(binding.getDeclaringClass().getQualifiedName())) {
+							if (!hasMethodBinding(requiresVerification, binding)) {
+								requiresVerification.add(binding);
+								break;
+							}
+						}
+					}
+					break;
+				}
+			}
+		}
 
 		return super.visit(node);
 	}

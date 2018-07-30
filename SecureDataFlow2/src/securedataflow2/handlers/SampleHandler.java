@@ -56,6 +56,7 @@ public class SampleHandler extends AbstractHandler {
             }
         }
         QUT.DataflowVisitor.Closure();
+        QUT.DataflowVisitor.Verify();
         System.out.println("Completely done !!!!");
       }
       catch (Exception e)
