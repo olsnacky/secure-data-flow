@@ -50,8 +50,8 @@ public class DataflowVisitor extends ASTVisitor {
 					impMethod.getName());
 
 			if (contractMethod == null) {
-				System.out
-						.println("Cannot verify " + impMethod + " as there is no corresponding method in the contract");
+				System.out.println("Cannot verify " + impMethod.getDeclaringClass().getQualifiedName() + ":"
+						+ impMethod.getName() + " as there is no corresponding method in the contract");
 				break;
 			} else {
 				IMethodBinding contractMethodBinding = contractMethod.getKey();
@@ -164,7 +164,7 @@ public class DataflowVisitor extends ASTVisitor {
 
 		return null;
 	}
-	
+
 	private static boolean hasMethodBinding(List<IMethodBinding> bindings, IMethodBinding binding) {
 		for (IMethodBinding b : bindings) {
 			if (b.isEqualTo(binding)) {
@@ -424,8 +424,10 @@ public class DataflowVisitor extends ASTVisitor {
 		Node recv;
 		if (node.getExpression() != null)
 			recv = GetDataflowNode(node.getExpression());
-		else
+		else {
 			recv = this_node;
+			current_method.graph.AddDataFlowEdge(GetNode(node.resolveMethodBinding().getDeclaringClass()), this_node);
+		}
 
 		List<Node> args = new ArrayList<Node>();
 		for (Object arg : node.arguments())
