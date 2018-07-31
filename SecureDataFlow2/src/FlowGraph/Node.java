@@ -92,6 +92,21 @@ public abstract class Node implements java.util.Comparator<Node>
     {
         return controlFlowEdges.containsKey(dest);
     }
+    
+    public boolean isHigh() {
+    	return this.name.equals("HIGH");
+    }
+    
+    public boolean isExternalNode(MethodContext context) {
+    	// TODO: formal params
+    	// TODO: return node
+    	// TODO: object properties
+    	return isHigh() || isLow() || context.args.contains(this);
+    }
+    
+    public boolean isLow() {
+    	return this.name.equals("LOW");
+    }
 
     boolean PointsToSame(Node other)
     {
@@ -119,6 +134,16 @@ public abstract class Node implements java.util.Comparator<Node>
     public int compare(Node o1, Node o2)
     {
         return o1.id - o2.id;
+    }
+    
+    public boolean mapsTo(Node contractNode) {
+    	if (this.isHigh()) {
+    		return contractNode.isHigh();
+    	} else if (this.isLow()) {
+    		return contractNode.isLow();
+    	}
+    	
+    	return false;
     }
 }
 

@@ -29,62 +29,101 @@ public class DataflowVisitor extends ASTVisitor {
 			Graph graph = m.getValue().graph;
 			System.out.println("Finally Method " + binding.getDeclaringClass().getQualifiedName() + "::" + binding);
 			graph.Closure();
-			graph.Dotty(binding.getName());
+			// graph.Dotty(binding.getName());
 		}
 	}
 
 	public static void Verify() {
-		// create entries for implementations to be verified
-		// for (Map.Entry<QualifiedName, List<QualifiedName>> moduleMapping :
-		// moduleMappings.entrySet()) {
-		// // iterate over our methods
-		// for (QualifiedName impQN : moduleMapping.getValue()) {
-		// verifications.put(impQN, new Hashtable<QualifiedName,Boolean>());
-		// }
-		// }
-
-		for (IMethodBinding impMethod : requiresVerification) {
+		for (IMethodBinding impMethBinding : requiresVerification) {
 			QualifiedName contractName = GetImplementationContractName(
-					impMethod.getDeclaringClass().getQualifiedName());
+					impMethBinding.getDeclaringClass().getQualifiedName());
 			Map.Entry<IMethodBinding, MethodFoo> contractMethod = GetContractMethod(contractName.toString(),
-					impMethod.getName());
+					impMethBinding.getName());
 
 			if (contractMethod == null) {
-				System.out.println("Cannot verify " + impMethod.getDeclaringClass().getQualifiedName() + ":"
-						+ impMethod.getName() + " as there is no corresponding method in the contract");
+				System.out.println("Cannot verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
+						+ impMethBinding.getName() + " as there is no corresponding method in the contract");
 				break;
 			} else {
-				IMethodBinding contractMethodBinding = contractMethod.getKey();
-				System.out.println(
-						"Will verify " + impMethod.getDeclaringClass().getQualifiedName() + ":" + impMethod.getName()
-								+ " against " + contractMethodBinding.getDeclaringClass().getQualifiedName() + ":"
-								+ contractMethodBinding.getName());
+				IMethodBinding conMethBinding = contractMethod.getKey();
+				MethodFoo impMethFoo = methods.get(impMethBinding);
+				MethodFoo conMethFoo = contractMethod.getValue();
+
+				System.out.println("Will verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
+						+ impMethBinding.getName() + " against " + conMethBinding.getDeclaringClass().getQualifiedName()
+						+ ":" + conMethBinding.getName());
+
+				// TODO: check they have the same signature
+				// if (!impMethBinding.toString().equals(conMethBinding.toString())) {
+				// System.out.println("Cannot verify " +
+				// impMethBinding.getDeclaringClass().getQualifiedName() + ":"
+				// + impMethBinding.getName() + " as its signature is to different to that of
+				// the contract");
+				// break;
+				// } else {
+				// for (Node n : impMethFoo.context.args) {
+				// System.out.println(n.name);
+				// }
+				// }
+
+				// determine if parameters are the same
+				ITypeBinding[] impParamTypes = impMethBinding.getParameterTypes();
+				ITypeBinding[] conParamTypes = conMethBinding.getParameterTypes();
+				boolean signaturesMeet = impParamTypes.length == conParamTypes.length
+						&& impMethFoo.context.args.size() == conMethFoo.context.args.size();
+				if (signaturesMeet) {
+					for (int i = 0; i < impParamTypes.length; i++) {
+						signaturesMeet = impParamTypes[i].getQualifiedName().equals(conParamTypes[i].getQualifiedName())
+								&& impMethFoo.context.args.get(i).name.equals(conMethFoo.context.args.get(i).name);
+						if (!signaturesMeet) {
+							break;
+						}
+					}
+
+				}
+
+				if (!signaturesMeet) {
+					System.out.println("Cannot verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
+							+ impMethBinding.getName() + " as its signature is to different to that of the contract");
+					break;
+				}
+				//
+				// if
+				// (!impMethBinding.getParameterTypes().equals(conMethBinding.getParameterTypes()))
+				// {
+				// System.out.println("Cannot verify " +
+				// impMethBinding.getDeclaringClass().getQualifiedName() + ":"
+				// + impMethBinding.getName() + " as its signature is to different to that of
+				// the contract");
+				// break;
+				// }
+
+				Graph impGraph = impMethFoo.getExternalGraph();
+				Graph conGraph = conMethFoo.getExternalGraph();
+				verifyMethodEdges(impGraph.dataFlowEdges, conGraph.dataFlowEdges);
+				verifyMethodEdges(impGraph.controlFlowEdges, conGraph.controlFlowEdges);
+				impGraph.Dotty(impMethBinding.getName());
+				conGraph.Dotty(conMethBinding.getName());
 			}
 		}
-		// for (Map.Entry<IMethodBinding, MethodFoo> m : methods.entrySet()) {
-		// // iterate over the mapped implementations
-		// for (QualifiedName impQN : moduleMapping.getValue()) {
-		// String mClass = m.getKey().getDeclaringClass().getQualifiedName();
-		// // if the method class is the same as our implementation
-		// if (impQN.toString().equals(mClass)) {
-		// // iterate over our methods to find the contract version
-		// for (Map.Entry<IMethodBinding, MethodFoo> mm : methods.entrySet()) {
-		// String cClass = mm.getKey().getDeclaringClass().getQualifiedName();
-		// if (moduleMapping.getKey().toString().equals(cClass)) {
-		// if (m.getKey().getName().equals(mm.getKey().getName())) {
-		// String implementationMethodName = mClass + ":" + m.getKey().getName();
-		// if (!verified.contains(implementationMethodName)) {
-		// System.out.println("Compare implementation " + implementationMethodName + "
-		// to contract " + cClass + ":" + mm.getKey().getName());
-		// verified.add(implementationMethodName);
-		// }
-		// }
-		// }
-		// }
-		// }
-		// }
-		// }
-		// }
+	}
+
+	private static void verifyMethodEdges(List<? extends Edge> impEdges, List<? extends Edge> conEdges) {
+		for (Edge idfe : impEdges) {
+			boolean found = false;
+			for (Edge cdfe : conEdges) {
+				if (idfe.correspondsTo(cdfe)) {
+					found = true;
+					break;
+				}
+			}
+
+			if (!found) {
+				System.out.println("Cannot verify as there is no corresponding " + idfe.getClass().getSimpleName() + " "
+						+ idfe + " in the contract");
+				break;
+			}
+		}
 	}
 
 	public void Dump() {

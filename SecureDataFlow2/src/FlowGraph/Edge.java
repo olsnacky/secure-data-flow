@@ -23,10 +23,15 @@ public abstract class Edge implements java.util.Comparator<Edge>
     } 
 
     protected abstract String arrow();
+    
+    public boolean isExternal(MethodContext context) {
+    	return src.isExternalNode(context) && dest.isExternalNode(context);
+    }
 
     public String toString()
     {
-        return "\t" + src + " " + arrow() + " " + dest;
+//        return "\t" + src + " " + arrow() + " " + dest;
+    	return src + " " + arrow() + " " + dest;
     }
 
     public void Explain(int indent)
@@ -67,6 +72,11 @@ public abstract class Edge implements java.util.Comparator<Edge>
         if (res == 0)
             return e1.dest.CompareTo(e2.dest);
         return res;
-    }   
+    }
+    
+    public boolean correspondsTo(Edge contractEdge) {
+    	return this.src.mapsTo(contractEdge.src) && this.dest.mapsTo(contractEdge.dest) &&
+    			this.getClass() == contractEdge.getClass();
+    }
 }
 

@@ -257,14 +257,7 @@ public /* partial */ class Graph implements NodeMap {
 							if (QUT.DataflowVisitor.hasMethod(method.method)) {
 								InlineMethodCall(method, (TypeNode) typeflow.src);
 							}
-						} else {
-							
 						}
-						// else if (method.recv instanceof LocalNode) {
-						// if (QUT.DataflowVisitor.hasMethod(method.method)) {
-						// InlineMethodCall(method, new TypeNode(method.method.getDeclaringClass()));
-						// }
-						// }
 					}
 				}
 		}
