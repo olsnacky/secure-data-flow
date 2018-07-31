@@ -136,11 +136,13 @@ public abstract class Node implements java.util.Comparator<Node>
         return o1.id - o2.id;
     }
     
-    public boolean mapsTo(Node contractNode) {
+    public boolean mapsTo(Node contractNode, MethodContext impContext, MethodContext conContext) {
     	if (this.isHigh()) {
     		return contractNode.isHigh();
     	} else if (this.isLow()) {
     		return contractNode.isLow();
+    	} else if (impContext.args.contains(this) && conContext.args.contains(contractNode)) {
+    		return impContext.args.indexOf(this) == conContext.args.indexOf(contractNode);
     	}
     	
     	return false;

@@ -74,8 +74,8 @@ public abstract class Edge implements java.util.Comparator<Edge>
         return res;
     }
     
-    public boolean correspondsTo(Edge contractEdge) {
-    	return this.src.mapsTo(contractEdge.src) && this.dest.mapsTo(contractEdge.dest) &&
+    public boolean correspondsTo(Edge contractEdge, MethodContext impContext, MethodContext conContext) {
+    	return this.src.mapsTo(contractEdge.src, impContext, conContext) && this.dest.mapsTo(contractEdge.dest, impContext, conContext) &&
     			this.getClass() == contractEdge.getClass();
     }
 }

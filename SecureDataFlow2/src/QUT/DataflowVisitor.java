@@ -87,32 +87,22 @@ public class DataflowVisitor extends ASTVisitor {
 							+ impMethBinding.getName() + " as its signature is to different to that of the contract");
 					break;
 				}
-				//
-				// if
-				// (!impMethBinding.getParameterTypes().equals(conMethBinding.getParameterTypes()))
-				// {
-				// System.out.println("Cannot verify " +
-				// impMethBinding.getDeclaringClass().getQualifiedName() + ":"
-				// + impMethBinding.getName() + " as its signature is to different to that of
-				// the contract");
-				// break;
-				// }
 
 				Graph impGraph = impMethFoo.getExternalGraph();
 				Graph conGraph = conMethFoo.getExternalGraph();
-				verifyMethodEdges(impGraph.dataFlowEdges, conGraph.dataFlowEdges);
-				verifyMethodEdges(impGraph.controlFlowEdges, conGraph.controlFlowEdges);
+				verifyMethodEdges(impGraph.dataFlowEdges, conGraph.dataFlowEdges, impMethFoo.context, conMethFoo.context);
+				verifyMethodEdges(impGraph.controlFlowEdges, conGraph.controlFlowEdges, impMethFoo.context, conMethFoo.context);
 				impGraph.Dotty(impMethBinding.getName());
 				conGraph.Dotty(conMethBinding.getName());
 			}
 		}
 	}
 
-	private static void verifyMethodEdges(List<? extends Edge> impEdges, List<? extends Edge> conEdges) {
+	private static void verifyMethodEdges(List<? extends Edge> impEdges, List<? extends Edge> conEdges, MethodContext impContext, MethodContext conContext) {
 		for (Edge idfe : impEdges) {
 			boolean found = false;
 			for (Edge cdfe : conEdges) {
-				if (idfe.correspondsTo(cdfe)) {
+				if (idfe.correspondsTo(cdfe, impContext, conContext)) {
 					found = true;
 					break;
 				}
