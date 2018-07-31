@@ -54,17 +54,6 @@ public class DataflowVisitor extends ASTVisitor {
 						+ ":" + conMethBinding.getName());
 
 				// TODO: check they have the same signature
-				// if (!impMethBinding.toString().equals(conMethBinding.toString())) {
-				// System.out.println("Cannot verify " +
-				// impMethBinding.getDeclaringClass().getQualifiedName() + ":"
-				// + impMethBinding.getName() + " as its signature is to different to that of
-				// the contract");
-				// break;
-				// } else {
-				// for (Node n : impMethFoo.context.args) {
-				// System.out.println(n.name);
-				// }
-				// }
 
 				// determine if parameters are the same
 				ITypeBinding[] impParamTypes = impMethBinding.getParameterTypes();
