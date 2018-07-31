@@ -53,8 +53,6 @@ public class DataflowVisitor extends ASTVisitor {
 						+ impMethBinding.getName() + " against " + conMethBinding.getDeclaringClass().getQualifiedName()
 						+ ":" + conMethBinding.getName());
 
-				// TODO: check they have the same signature
-
 				// determine if parameters are the same
 				ITypeBinding[] impParamTypes = impMethBinding.getParameterTypes();
 				ITypeBinding[] conParamTypes = conMethBinding.getParameterTypes();
@@ -70,6 +68,9 @@ public class DataflowVisitor extends ASTVisitor {
 					}
 
 				}
+				
+				// return type matches
+				signaturesMeet = impMethBinding.getReturnType().getQualifiedName().equals(conMethBinding.getReturnType().getQualifiedName());
 
 				if (!signaturesMeet) {
 					System.out.println("Cannot verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
