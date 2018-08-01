@@ -27,6 +27,10 @@ public abstract class Edge implements java.util.Comparator<Edge>
     public boolean isExternal(MethodContext context) {
     	return src.isExternalNode(context) && dest.isExternalNode(context);
     }
+    
+    public boolean shouldBeExternal(MethodContext context) {
+    	return src.isExternalNode(context) && !dest.isExternalNode(context);
+    }
 
     public String toString()
     {

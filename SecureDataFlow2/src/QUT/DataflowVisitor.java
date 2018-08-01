@@ -68,9 +68,10 @@ public class DataflowVisitor extends ASTVisitor {
 					}
 
 				}
-				
+
 				// return type matches
-				signaturesMeet = impMethBinding.getReturnType().getQualifiedName().equals(conMethBinding.getReturnType().getQualifiedName());
+				signaturesMeet = impMethBinding.getReturnType().getQualifiedName()
+						.equals(conMethBinding.getReturnType().getQualifiedName());
 
 				if (!signaturesMeet) {
 					System.out.println("Cannot verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
@@ -80,15 +81,22 @@ public class DataflowVisitor extends ASTVisitor {
 
 				Graph impGraph = impMethFoo.getExternalGraph();
 				Graph conGraph = conMethFoo.getExternalGraph();
-				verifyMethodEdges(impGraph.dataFlowEdges, conGraph.dataFlowEdges, impMethFoo.context, conMethFoo.context);
-				verifyMethodEdges(impGraph.controlFlowEdges, conGraph.controlFlowEdges, impMethFoo.context, conMethFoo.context);
-				impGraph.Dotty(impMethBinding.getName());
-				conGraph.Dotty(conMethBinding.getName());
+				verifyMethodEdges(impGraph.dataFlowEdges, conGraph.dataFlowEdges, impMethFoo.context,
+						conMethFoo.context);
+				verifyMethodEdges(impGraph.controlFlowEdges, conGraph.controlFlowEdges, impMethFoo.context,
+						conMethFoo.context);
+				System.out.println("Full Graph");
+				impMethFoo.graph.Dotty("\"Implementation:" + impMethBinding.getName() + "\"");
+				conMethFoo.graph.Dotty("\"Contract:" + conMethBinding.getName() + "\"");
+				System.out.println("External Graph");
+				impGraph.Dotty("\"Implementation:" + impMethBinding.getName() + "\"");
+				conGraph.Dotty("\"Contract:" + conMethBinding.getName() + "\"");
 			}
 		}
 	}
 
-	private static void verifyMethodEdges(List<? extends Edge> impEdges, List<? extends Edge> conEdges, MethodContext impContext, MethodContext conContext) {
+	private static void verifyMethodEdges(List<? extends Edge> impEdges, List<? extends Edge> conEdges,
+			MethodContext impContext, MethodContext conContext) {
 		for (Edge idfe : impEdges) {
 			boolean found = false;
 			for (Edge cdfe : conEdges) {
@@ -137,9 +145,18 @@ public class DataflowVisitor extends ASTVisitor {
 
 	public static Node GetDataflowNode(ASTNode node) {
 		Node n = (Node) node.getProperty("qut");
-		if (n == null)
-			throw new RuntimeException("Failed to fetch node created for child " + node + " (" + node.getClass() + ")");
+		if (n == null) {
+			if (!isMapsToAnnotation(node)) {
+				throw new RuntimeException(
+						"Failed to fetch node created for child " + node + " (" + node.getClass() + ")");
+			}
+		}
 		return n;
+	}
+
+	private static boolean isMapsToAnnotation(ASTNode n) {
+		System.out.println(((Annotation) n).getTypeName());
+		return n instanceof Annotation && ((Annotation) n).getTypeName().toString().equals("MapsTo");
 	}
 
 	private void SetDataflowNode(ASTNode node, Node exp) {
@@ -400,6 +417,8 @@ public class DataflowVisitor extends ASTVisitor {
 		Node obj = GetDataflowNode(node.getExpression());
 		FieldNode field = obj.getField(node.resolveFieldBinding());
 		SetDataflowNode(node, field);
+		
+		current_method.graph.AddControlFlowEdge(this_node, field); // is this correct?
 	}
 
 	@Override

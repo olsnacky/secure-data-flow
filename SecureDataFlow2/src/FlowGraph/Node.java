@@ -83,11 +83,21 @@ public abstract class Node implements java.util.Comparator<Node> {
 
 	public boolean isExternalNode(MethodContext context) {
 		// TODO: object properties
-		return isHigh() || isLow() || context.args.contains(this) || context.return_value.equals(this);
+		return isHigh() || isLow() || context.args.contains(this) || context.return_value.equals(this)
+				|| this.isThis()
+				|| (this.isField() && ((FieldNode) this).lhs.isThis());
 	}
 
 	public boolean isLow() {
 		return this.name.equals("LOW");
+	}
+	
+	public boolean isThis() {
+		return this.name.equals("this");
+	}
+	
+	public boolean isField() {
+		return this instanceof FieldNode;
 	}
 
 	boolean PointsToSame(Node other) {
@@ -122,6 +132,10 @@ public abstract class Node implements java.util.Comparator<Node> {
 			return impContext.args.indexOf(this) == conContext.args.indexOf(contractNode);
 		} else if (impContext.return_value.equals(this)) {
 			return conContext.return_value.equals(contractNode);
+		} else if (this.isThis()) {
+			return contractNode.isThis();
+		} else if (this.isField()) {
+			return contractNode.isField() && contractNode.name.equals(this.name);
 		}
 
 		return false;
