@@ -2,9 +2,13 @@ package FlowGraph;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -21,7 +25,9 @@ public /* partial */ class Graph implements NodeMap {
 	// Edges
 	public List<MethodCall> methods = new ArrayList<MethodCall>();
 	public List<ControlFlowEdge> controlFlowEdges = new ArrayList<ControlFlowEdge>();
+	public List<ControlFlowPath> controlFlowPaths = new ArrayList<ControlFlowPath>();
 	public List<DataFlowEdge> dataFlowEdges = new ArrayList<DataFlowEdge>();
+	public List<DataFlowPath> dataFlowPaths = new ArrayList<DataFlowPath>();
 	public List<PointsToSameEdge> pointsToSameEdges = new ArrayList<PointsToSameEdge>();
 	public List<AliasEdge> aliasEdges = new ArrayList<AliasEdge>();
 
@@ -29,8 +35,16 @@ public /* partial */ class Graph implements NodeMap {
 		AddControlFlowEdge(new ControlFlowEdge(src, dest, null));
 	}
 
+	public void AddControlFlowPath(Node src, Node dest) {
+		AddControlFlowPath(new ControlFlowPath(src, dest, null));
+	}
+
 	public void AddDataFlowEdge(Node src, Node dest) {
 		AddDataFlowEdge(new DataFlowEdge(src, dest, null));
+	}
+
+	public void AddDataFlowPath(Node src, Node dest) {
+		AddDataFlowPath(new DataFlowPath(src, dest, null));
 	}
 
 	public void AddMethodCallNode(ASTNode callpoint, IMethodBinding method, Node recv, List<Node> args, Node tr,
@@ -41,20 +55,42 @@ public /* partial */ class Graph implements NodeMap {
 	}
 
 	private void AddControlFlowEdge(ControlFlowEdge edge) {
+//		AddAliasIdentityEdge(edge.src);
+//		AddAliasIdentityEdge(edge.dest);
 		if (!edge.src.IsControlFlowTo(edge.dest)) {
 			controlFlowEdges.add(edge);
 			edge.src.AddControlFlowSrc(edge);
 
-			if (edge.isInconsistent())
-				inconsistent = true;
+			changed = true;
+		}
+	}
+
+	private void AddControlFlowPath(ControlFlowPath path) {
+		if (!path.src.IsControlFlowPathTo(path.dest)) {
+			controlFlowPaths.add(path);
+			path.src.AddControlFlowPathSrc(path);
+
+//			if (path.isInconsistent())
+//				inconsistent = true;
 			changed = true;
 		}
 	}
 
 	private void AddDataFlowEdge(DataFlowEdge edge) {
+//		AddAliasIdentityEdge(edge.src);
+//		AddAliasIdentityEdge(edge.dest);
 		if (!edge.src.IsDataFlowTo(edge.dest)) {
 			dataFlowEdges.add(edge);
 			edge.src.AddDataFlowSrc(edge);
+
+			changed = true;
+		}
+	}
+
+	private void AddDataFlowPath(DataFlowPath path) {
+		if (!path.src.IsDataFlowPathTo(path.dest)) {
+			dataFlowPaths.add(path);
+			path.src.AddDataFlowPathSrc(path);
 
 			changed = true;
 		}
@@ -69,6 +105,11 @@ public /* partial */ class Graph implements NodeMap {
 
 			// TestProgram.WriteLine(edge);
 		}
+	}
+
+	public void AddAliasIdentityEdge(Node node) {
+		AliasEdge edge = new AliasEdge(node, node, null);
+		AddAliasEdge(edge);
 	}
 
 	private void AddAliasEdge(AliasEdge edge) {
@@ -134,25 +175,35 @@ public /* partial */ class Graph implements NodeMap {
 
 		nodes = new ArrayList<Node>();
 
-		for (DataFlowEdge edge : dataFlowEdges) {
-			Append(edge.src);
-			Append(edge.dest);
-			System.out.println(edge.dotty() + "[style=solid];");
+//		for (DataFlowEdge edge : dataFlowEdges) {
+//			Append(edge.src);
+//			Append(edge.dest);
+//			System.out.println(edge.dotty() + "[color=\"darkgreen:invis:darkgreen\"];");
+//		}
+		for (DataFlowPath path : dataFlowPaths) {
+			Append(path.src);
+			Append(path.dest);
+			System.out.println(path.dotty() + "[arrowhead=onormal,color=\"darkgreen:invis:darkgreen\"];");
 		}
-		for (ControlFlowEdge edge : controlFlowEdges) {
-			Append(edge.src);
-			Append(edge.dest);
-			System.out.println(edge.dotty() + "[style=dashed];");
+//		for (ControlFlowEdge edge : controlFlowEdges) {
+//			Append(edge.src);
+//			Append(edge.dest);
+//			System.out.println(edge.dotty() + "[color=\"darkviolet\"];");
+//		}
+		for (ControlFlowPath path : controlFlowPaths) {
+			Append(path.src);
+			Append(path.dest);
+			System.out.println(path.dotty() + "[arrowhead=onormal,color=\"darkviolet\"];");
 		}
-		for (PointsToSameEdge edge : pointsToSameEdges) {
-			Append(edge.src);
-			Append(edge.dest);
-			System.out.println(edge.dotty() + "[style=dotted];");
-		}
+//		for (PointsToSameEdge edge : pointsToSameEdges) {
+//			Append(edge.src);
+//			Append(edge.dest);
+//			System.out.println(edge.dotty() + "[dir=both,color=firebrick1];");
+//		}
 		for (AliasEdge edge : aliasEdges) {
 			Append(edge.src);
 			Append(edge.dest);
-			System.out.println(edge.dotty() + "[style=tapered];");
+			System.out.println(edge.dotty() + "[dir=both,color=\"firebrick1:invis:firebrick1\"];");
 		}
 
 		for (Node node : nodes)
@@ -188,15 +239,16 @@ public /* partial */ class Graph implements NodeMap {
 	public void Closure() {
 		inconsistent = false;
 
-		while (!inconsistent && changed) {
+		while (changed) {
 			changed = false;
 
 			// Compute points to same
-			for (DataFlowEdge edge1 : dataFlowEdges)
-				if (edge1.src instanceof ValueNode) {
-					AddPointsToSameEdge(new PointsToSameEdge(edge1.src, edge1.dest, Arrays.asList(edge1)));
-					for (DataFlowEdge edge2 : edge1.src.dataFlowEdges.values())
-						AddPointsToSameEdge(new PointsToSameEdge(edge1.dest, edge2.dest, Arrays.asList(edge1, edge2)));
+			for (DataFlowPath dfPath1 : dataFlowPaths)
+				if (dfPath1.src instanceof ValueNode) {
+					AddPointsToSameEdge(new PointsToSameEdge(dfPath1.src, dfPath1.dest, Arrays.asList(dfPath1)));
+					for (DataFlowPath dfPath2 : dfPath1.src.dataFlowPaths.values())
+						AddPointsToSameEdge(
+								new PointsToSameEdge(dfPath1.dest, dfPath2.dest, Arrays.asList(dfPath1, dfPath2)));
 				}
 
 			// Data flow implies Control flow
@@ -213,38 +265,47 @@ public /* partial */ class Graph implements NodeMap {
 				}
 
 			// Data flow transitivity without aliasing
-			for (DataFlowEdge edge1 : new ArrayList<DataFlowEdge>(dataFlowEdges))
-				if (edge1.dest instanceof ValueNode)
-					for (DataFlowEdge edge2 : edge1.dest.dataFlowEdges.values())
-						AddDataFlowEdge(new DataFlowEdge(edge1.src, edge2.dest, Arrays.asList(edge1, edge2)));
+//			for (DataFlowEdge edge1 : new ArrayList<DataFlowEdge>(dataFlowEdges))
+//				if (edge1.dest instanceof ValueNode)
+//					for (DataFlowEdge edge2 : edge1.dest.dataFlowEdges.values())
+//						AddDataFlowEdge(new DataFlowEdge(edge1.src, edge2.dest, Arrays.asList(edge1, edge2)));
 
-			// Data flow transitivity with aliasing
+			// Data flow path
+//			for (AliasEdge alias1 : new ArrayList<AliasEdge>(aliasEdges))
+//				if (alias1.dest instanceof ValueNode)
+//					for (Map.Entry<Node, AliasEdge> item2 : alias1.dest.aliasEdges.entrySet()) {
+//						Node edge2_dest = item2.getKey();
+//						AliasEdge edge2 = item2.getValue();
+//						for (DataFlowEdge edge3 : edge2_dest.dataFlowEdges.values())
+//							AddDataFlowEdge(
+//									new DataFlowEdge(alias1.src, edge3.dest, Arrays.asList(alias1, edge2, edge3)));
+
+//					}
+//			for (AliasEdge alias1 : new ArrayList<AliasEdge>(aliasEdges))
+//				findPathEnd(alias1.src, true);
 			for (DataFlowEdge edge1 : new ArrayList<DataFlowEdge>(dataFlowEdges))
-				if (edge1.dest instanceof ValueNode)
-					for (Map.Entry<Node, AliasEdge> item2 : edge1.dest.aliasEdges.entrySet()) {
-						Node edge2_dest = item2.getKey();
-						AliasEdge edge2 = item2.getValue();
-						for (DataFlowEdge edge3 : edge2_dest.dataFlowEdges.values())
-							AddDataFlowEdge(
-									new DataFlowEdge(edge1.src, edge3.dest, Arrays.asList(edge1, edge2, edge3)));
-					}
+				findPathEnd(edge1.src, true);
 
 			// Control flow transitivity without aliasing
-			for (ControlFlowEdge edge1 : new ArrayList<ControlFlowEdge>(controlFlowEdges))
-				if (edge1.dest instanceof ValueNode)
-					for (ControlFlowEdge edge2 : edge1.dest.controlFlowEdges.values())
-						AddControlFlowEdge(new ControlFlowEdge(edge1.src, edge2.dest, Arrays.asList(edge1, edge2)));
+//			for (ControlFlowEdge edge1 : new ArrayList<ControlFlowEdge>(controlFlowEdges))
+//				if (edge1.dest instanceof ValueNode)
+//					for (ControlFlowEdge edge2 : edge1.dest.controlFlowEdges.values())
+//						AddControlFlowEdge(new ControlFlowEdge(edge1.src, edge2.dest, Arrays.asList(edge1, edge2)));
 
 			// Control flow transitivity with aliasing
+//			for (ControlFlowEdge edge1 : new ArrayList<ControlFlowEdge>(controlFlowEdges))
+//				if (edge1.dest instanceof ValueNode)
+//					for (Map.Entry<Node, AliasEdge> item2 : edge1.dest.aliasEdges.entrySet()) {
+//						Node edge2_dest = item2.getKey();
+//						AliasEdge edge2 = item2.getValue();
+//						for (ControlFlowEdge edge3 : edge2_dest.controlFlowEdges.values())
+//							AddControlFlowEdge(
+//									new ControlFlowEdge(edge1.src, edge3.dest, Arrays.asList(edge1, edge2, edge3)));
+//					}
 			for (ControlFlowEdge edge1 : new ArrayList<ControlFlowEdge>(controlFlowEdges))
-				if (edge1.dest instanceof ValueNode)
-					for (Map.Entry<Node, AliasEdge> item2 : edge1.dest.aliasEdges.entrySet()) {
-						Node edge2_dest = item2.getKey();
-						AliasEdge edge2 = item2.getValue();
-						for (ControlFlowEdge edge3 : edge2_dest.controlFlowEdges.values())
-							AddControlFlowEdge(
-									new ControlFlowEdge(edge1.src, edge3.dest, Arrays.asList(edge1, edge2, edge3)));
-					}
+				findPathEnd(edge1.src, false);
+//			for (AliasEdge alias1 : new ArrayList<AliasEdge>(aliasEdges))
+//				findPathEnd(alias1.src, false);
 
 			// Method closure
 			for (MethodCall method : new ArrayList<MethodCall>(methods))
@@ -252,7 +313,7 @@ public /* partial */ class Graph implements NodeMap {
 				{
 					InlineMethodCall(method);
 				} else {
-					for (DataFlowEdge typeflow : new ArrayList<DataFlowEdge>(dataFlowEdges)) {
+					for (DataFlowPath typeflow : new ArrayList<DataFlowPath>(dataFlowPaths)) {
 						if (typeflow.src instanceof TypeNode && typeflow.dest == method.recv) {
 							if (QUT.DataflowVisitor.hasMethod(method.method)) {
 								InlineMethodCall(method, (TypeNode) typeflow.src);
@@ -262,14 +323,65 @@ public /* partial */ class Graph implements NodeMap {
 				}
 		}
 
-		if (inconsistent)
-			System.out.println("        Inconsistent\n");
-		else
-			System.out.println("        Consistent\n");
+//		if (inconsistent)
+//			System.out.println("        Inconsistent\n");
+//		else
+//			System.out.println("        Consistent\n");
+//
+//		for (ControlFlowEdge edge : controlFlowEdges)
+//			if (edge.isInconsistent())
+//				edge.Explain(0);
+	}
 
-		for (ControlFlowEdge edge : controlFlowEdges)
-			if (edge.isInconsistent())
-				edge.Explain(0);
+	private void findPathEnd(Node start, boolean isDataTransferPath) {
+		Queue<BFSearchEntry> queue = new LinkedList<>();
+		Set<BFSearchEntry> history = new HashSet<BFSearchEntry>();
+		Set<Node> visited = new HashSet<Node>();
+
+		queue.add(new BFSearchEntry(start, true));
+
+		while (!queue.isEmpty()) {
+			BFSearchEntry entry = queue.poll();
+			history.add(entry);
+
+			Node entryNode = entry.node;
+			visited.add(entryNode);
+			Set<Node> keys;
+
+			if (isDataTransferPath) {
+				keys = entryNode.dataFlowEdges.keySet();
+			} else {
+				keys = entryNode.controlFlowEdges.keySet();
+			}
+
+			for (Node destination : keys) {
+				BFSearchEntry newEntry = new BFSearchEntry(destination, true);
+				if (!history.contains(newEntry)) {
+					queue.add(newEntry);
+				}
+			}
+
+			if (entry.canBeAliasEdge) {
+				keys = entryNode.aliasEdges.keySet();
+
+				for (Node destination : keys) {
+					BFSearchEntry newEntry = new BFSearchEntry(destination, false);
+					if (!history.contains(new BFSearchEntry(destination, true))) {
+						if (!history.contains(newEntry)) {
+							queue.add(newEntry);
+						}
+					}
+				}
+			}
+
+		}
+
+		for (Node sink : visited) {
+			if (isDataTransferPath)
+				AddDataFlowPath(start, sink);
+			else
+				AddControlFlowPath(start, sink);
+		}
 	}
 
 	private void InlineMethodCall(MethodCall method_invocation, TypeNode C) {

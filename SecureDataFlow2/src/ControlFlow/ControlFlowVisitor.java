@@ -53,8 +53,10 @@ public class ControlFlowVisitor extends ASTVisitor
             {
                 ControlFlowBlock stmt = blocks.get(node.statements().get(i));
                 
-                if (i + 1 < node.statements().size())
-                    CFG.AddControlFlowEdges(stmt.last, blocks.get(node.statements().get(i + 1)).head);
+                if (i + 1 < node.statements().size()) {
+                	Statement head = blocks.get(node.statements().get(i + 1)).head;
+                    CFG.AddControlFlowEdges(stmt.last, head);
+                }
 
                 Propagate(stmt, parent, i == node.statements().size() - 1);
             }

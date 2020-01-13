@@ -7,6 +7,7 @@ public class FieldNode extends ValueNode
 {
     public Node lhs;
     IVariableBinding binding;
+    public String mapsTo;
 
     public FieldNode(Node lhs, IVariableBinding binding)
     {
@@ -22,7 +23,7 @@ public class FieldNode extends ValueNode
 
     public Node Clone(NodeMap map)
     {
-        return map.map(lhs).getField(binding);
+        return map.map(lhs).getField(binding, null);
     }
 
     public String NodeChar()

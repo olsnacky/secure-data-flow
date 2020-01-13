@@ -14,7 +14,9 @@ public abstract class Node implements java.util.Comparator<Node> {
 	public Map<IVariableBinding, FieldNode> fields = new Hashtable<IVariableBinding, FieldNode>();
 
 	public Map<Node, DataFlowEdge> dataFlowEdges = new Hashtable<Node, DataFlowEdge>();
+	public Map<Node, DataFlowPath> dataFlowPaths = new Hashtable<Node, DataFlowPath>();
 	public Map<Node, ControlFlowEdge> controlFlowEdges = new Hashtable<Node, ControlFlowEdge>();
+	public Map<Node, ControlFlowPath> controlFlowPaths = new Hashtable<Node, ControlFlowPath>();
 	public Map<Node, PointsToSameEdge> pointsToEdges = new Hashtable<Node, PointsToSameEdge>();
 	public Map<Node, AliasEdge> aliasEdges = new Hashtable<Node, AliasEdge>();
 
@@ -32,9 +34,12 @@ public abstract class Node implements java.util.Comparator<Node> {
 		return this;
 	}
 
-	public FieldNode getField(IVariableBinding name) {
+	public FieldNode getField(IVariableBinding name, Map<String, String> fieldMappings) {
 		if (!fields.containsKey(name)) {
 			FieldNode node = new FieldNode(this, name);
+			if (fieldMappings != null && fieldMappings.containsKey(node.name)) {
+				node.mapsTo = fieldMappings.get(node.name);
+			}
 			fields.put(name, node);
 			return node;
 		} else
@@ -44,9 +49,17 @@ public abstract class Node implements java.util.Comparator<Node> {
 	public void AddDataFlowSrc(DataFlowEdge edge) {
 		dataFlowEdges.put(edge.dest, edge);
 	}
+	
+	public void AddDataFlowPathSrc(DataFlowPath path) {
+		dataFlowPaths.put(path.dest, path);
+	}
 
 	public void AddControlFlowSrc(ControlFlowEdge edge) {
 		controlFlowEdges.put(edge.dest, edge);
+	}
+	
+	public void AddControlFlowPathSrc(ControlFlowPath path) {
+		controlFlowPaths.put(path.dest, path);
 	}
 
 	public void AddPointsToSameSrc(PointsToSameEdge edge) {
@@ -68,6 +81,10 @@ public abstract class Node implements java.util.Comparator<Node> {
 	public boolean IsDataFlowTo(Node dest) {
 		return dataFlowEdges.containsKey(dest);
 	}
+	
+	public boolean IsDataFlowPathTo(Node dest) {
+		return dataFlowPaths.containsKey(dest);
+	}
 
 	public boolean IsAlias(Node dest) {
 		return aliasEdges.containsKey(dest);
@@ -76,6 +93,10 @@ public abstract class Node implements java.util.Comparator<Node> {
 	public boolean IsControlFlowTo(Node dest) {
 		return controlFlowEdges.containsKey(dest);
 	}
+	
+	public boolean IsControlFlowPathTo(Node dest) {
+		return controlFlowPaths.containsKey(dest);
+	}
 
 	public boolean isHigh() {
 		return this.name.equals("HIGH");
@@ -83,19 +104,22 @@ public abstract class Node implements java.util.Comparator<Node> {
 
 	public boolean isExternalNode(MethodContext context) {
 		// TODO: object properties
-		return isHigh() || isLow() || context.args.contains(this) || context.return_value.equals(this)
-				|| this.isThis()
-				|| (this.isField() && ((FieldNode) this).lhs.isThis());
+		return isHigh() ||
+				isLow() ||
+				context.args.contains(this) ||
+				context.return_value.equals(this) ||
+				context.recv.equals(this) ||
+				(this.isField() && ((FieldNode) this).lhs.isExternalNode(context));
 	}
 
 	public boolean isLow() {
 		return this.name.equals("LOW");
 	}
-	
+
 	public boolean isThis() {
 		return this.name.equals("this");
 	}
-	
+
 	public boolean isField() {
 		return this instanceof FieldNode;
 	}
@@ -111,7 +135,7 @@ public abstract class Node implements java.util.Comparator<Node> {
 	}
 
 	public String toString() {
-		return NodeChar() + ":" + name;
+		return NodeChar() + ":" + name.replace("\"", "").replace("[", "").replace("]", "").replace("\\", "");
 	}
 
 	public int CompareTo(Node o) {
@@ -121,6 +145,10 @@ public abstract class Node implements java.util.Comparator<Node> {
 	@Override
 	public int compare(Node o1, Node o2) {
 		return o1.id - o2.id;
+	}
+	
+	public boolean equals(Object o) {
+		return (o instanceof Node) && ((Node) o).id == this.id;
 	}
 
 	public boolean mapsTo(Node contractNode, MethodContext impContext, MethodContext conContext) {
@@ -135,7 +163,8 @@ public abstract class Node implements java.util.Comparator<Node> {
 		} else if (this.isThis()) {
 			return contractNode.isThis();
 		} else if (this.isField()) {
-			return contractNode.isField() && contractNode.name.equals(this.name);
+			return (contractNode.isField() && contractNode.name.equals(this.name))
+					|| (contractNode.isField() && (((FieldNode) this).mapsTo != null && ((FieldNode) this).mapsTo.equals(contractNode.name)));
 		}
 
 		return false;

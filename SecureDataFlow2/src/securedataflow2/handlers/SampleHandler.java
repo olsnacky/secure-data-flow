@@ -19,6 +19,7 @@ import QUT.*;
 
 /**
  * Our sample handler extends AbstractHandler, an IHandler base class.
+ * 
  * @see org.eclipse.core.commands.IHandler
  * @see org.eclipse.core.commands.AbstractHandler
  */
@@ -29,40 +30,33 @@ public class SampleHandler extends AbstractHandler {
 	public SampleHandler() {
 	}
 
-    private void AnalyseCompilationUnit(ICompilationUnit unit) throws JavaModelException
-    {
-        ASTParser parser = ASTParser.newParser(AST.JLS10);
-        parser.setResolveBindings(true);
-        parser.setSource(unit);
-        parser.setKind(ASTParser.K_COMPILATION_UNIT);
-        
-        QUT.Analyzer analyzer = new QUT.Analyzer();
-        analyzer.Analyze(parser);
-    }
-    
-  public Object execute(ExecutionEvent event) throws ExecutionException
-  {
-      try
-      {
-        for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects())   
-        {
-            for (IPackageFragment mypackage : JavaCore.create(project).getPackageFragments())
-            {     
-                for (ICompilationUnit unit : mypackage.getCompilationUnits())
-                {
-                    System.out.println("project " + project.getName() + ", package " + mypackage.getElementName() + ", unit " + unit.getElementName());
-                    AnalyseCompilationUnit(unit);                   
-                }
-            }
-        }
-        QUT.DataflowVisitor.Closure();
-        QUT.DataflowVisitor.Verify();
-        System.out.println("Completely done !!!!");
-      }
-      catch (Exception e)
-      {
-          System.err.println("Exception " + e);
-      }
-    return null;
-  }
+	private void AnalyseCompilationUnit(ICompilationUnit unit) throws JavaModelException {
+		ASTParser parser = ASTParser.newParser(AST.JLS10);
+		parser.setResolveBindings(true);
+		parser.setSource(unit);
+		parser.setKind(ASTParser.K_COMPILATION_UNIT);
+
+		QUT.Analyzer analyzer = new QUT.Analyzer();
+		analyzer.Analyze(parser);
+	}
+
+	public Object execute(ExecutionEvent event) throws ExecutionException {
+		try {
+			for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+				for (IPackageFragment mypackage : JavaCore.create(project).getPackageFragments()) {
+					for (ICompilationUnit unit : mypackage.getCompilationUnits()) {
+						System.out.println("project " + project.getName() + ", package " + mypackage.getElementName()
+								+ ", unit " + unit.getElementName());
+						AnalyseCompilationUnit(unit);
+					}
+				}
+			}
+//        QUT.DataflowVisitor.Closure();
+			QUT.DataflowVisitor.Verify();
+			System.out.println("Completely done !!!!");
+		} catch (Exception e) {
+			System.err.println("Exception " + e);
+		}
+		return null;
+	}
 }

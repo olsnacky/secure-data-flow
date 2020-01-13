@@ -14,8 +14,10 @@ import java.util.Set;
 public class DataflowVisitor extends ASTVisitor {
 	private MethodFoo current_method;
 	public Node this_node;
+	public Map<String, String> fieldMappings = new Hashtable<String, String>();
 
 	public static Map<QualifiedName, QualifiedName> moduleMappings = new Hashtable<QualifiedName, QualifiedName>();
+	public static Map<String, String> contractMappings = new Hashtable<String, String>(); // interface, contract
 	// public static Map<QualifiedName, Map<QualifiedName, Boolean>> verifications =
 	// new Hashtable<QualifiedName, Map<QualifiedName, Boolean>>();
 	public static List<IMethodBinding> requiresVerification = new ArrayList<IMethodBinding>();
@@ -35,62 +37,74 @@ public class DataflowVisitor extends ASTVisitor {
 
 	public static void Verify() {
 		for (IMethodBinding impMethBinding : requiresVerification) {
-			QualifiedName contractName = GetImplementationContractName(
-					impMethBinding.getDeclaringClass().getQualifiedName());
-			Map.Entry<IMethodBinding, MethodFoo> contractMethod = GetContractMethod(contractName.toString(),
+			System.out.println("Staring verification of " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
+					+ impMethBinding.getName());
+			ITypeBinding[] methodClassInterfaces = impMethBinding.getDeclaringClass().getInterfaces();
+			if (methodClassInterfaces.length != 1) {
+				System.out.println("Only 1 interface allowed");
+				continue;
+			}
+
+			String interfaceName = methodClassInterfaces[0].getQualifiedName();
+			String contractName = GetInterfaceContractName(interfaceName);
+			Map.Entry<IMethodBinding, MethodFoo> contractMethod = GetContractMethod(contractName,
 					impMethBinding.getName());
 
 			if (contractMethod == null) {
 				System.out.println("Cannot verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
 						+ impMethBinding.getName() + " as there is no corresponding method in the contract");
-				break;
+				continue;
 			} else {
 				IMethodBinding conMethBinding = contractMethod.getKey();
 				MethodFoo impMethFoo = methods.get(impMethBinding);
 				MethodFoo conMethFoo = contractMethod.getValue();
 
-				System.out.println("Will verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
-						+ impMethBinding.getName() + " against " + conMethBinding.getDeclaringClass().getQualifiedName()
-						+ ":" + conMethBinding.getName());
+				if (impMethBinding.getDeclaringClass().getQualifiedName().equals("com.qutifc.implementations.writer.json.components.WriterJSON") && impMethBinding.getName().equals("write")) {
+					System.out.println("Will verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
+							+ impMethBinding.getName() + " against "
+							+ conMethBinding.getDeclaringClass().getQualifiedName() + ":" + conMethBinding.getName());
 
-				// determine if parameters are the same
-				ITypeBinding[] impParamTypes = impMethBinding.getParameterTypes();
-				ITypeBinding[] conParamTypes = conMethBinding.getParameterTypes();
-				boolean signaturesMeet = impParamTypes.length == conParamTypes.length
-						&& impMethFoo.context.args.size() == conMethFoo.context.args.size();
-				if (signaturesMeet) {
-					for (int i = 0; i < impParamTypes.length; i++) {
-						signaturesMeet = impParamTypes[i].getQualifiedName().equals(conParamTypes[i].getQualifiedName())
-								&& impMethFoo.context.args.get(i).name.equals(conMethFoo.context.args.get(i).name);
-						if (!signaturesMeet) {
-							break;
+					// determine if parameters are the same
+					ITypeBinding[] impParamTypes = impMethBinding.getParameterTypes();
+					ITypeBinding[] conParamTypes = conMethBinding.getParameterTypes();
+					boolean signaturesMeet = impParamTypes.length == conParamTypes.length
+							&& impMethFoo.context.args.size() == conMethFoo.context.args.size();
+					if (signaturesMeet) {
+						for (int i = 0; i < impParamTypes.length; i++) {
+							signaturesMeet &= impParamTypes[i].getQualifiedName()
+									.equals(conParamTypes[i].getQualifiedName())
+									&& impMethFoo.context.args.get(i).name.equals(conMethFoo.context.args.get(i).name);
+							if (!signaturesMeet)
+								break;
 						}
+
 					}
 
+					// return type matches
+					signaturesMeet &= impMethBinding.getReturnType().getQualifiedName()
+							.equals(conMethBinding.getReturnType().getQualifiedName());
+
+					if (!signaturesMeet) {
+						System.out.println("Cannot verify " + impMethBinding.getDeclaringClass().getQualifiedName()
+								+ ":" + impMethBinding.getName()
+								+ " as its signature is to different to that of the contract");
+						continue;
+					}
+
+					Graph impGraph = impMethFoo.getVerificationGraph(true);
+					Graph conGraph = conMethFoo.getVerificationGraph(false);
+					verifyMethodEdges(impGraph.dataFlowPaths, conGraph.dataFlowPaths, impMethFoo.context,
+							conMethFoo.context);
+					verifyMethodEdges(impGraph.controlFlowPaths, conGraph.controlFlowPaths, impMethFoo.context,
+							conMethFoo.context);
+
+					System.out.println("Full Graph");
+					impMethFoo.graph.Dotty("\"Implementation:" + impMethBinding.getName() + "\"");
+					conMethFoo.graph.Dotty("\"Contract:" + conMethBinding.getName() + "\"");
+					System.out.println("External Graph");
+					impGraph.Dotty("\"Implementation:" + impMethBinding.getName() + "\"");
+					conGraph.Dotty("\"Contract:" + conMethBinding.getName() + "\"");
 				}
-
-				// return type matches
-				signaturesMeet = impMethBinding.getReturnType().getQualifiedName()
-						.equals(conMethBinding.getReturnType().getQualifiedName());
-
-				if (!signaturesMeet) {
-					System.out.println("Cannot verify " + impMethBinding.getDeclaringClass().getQualifiedName() + ":"
-							+ impMethBinding.getName() + " as its signature is to different to that of the contract");
-					break;
-				}
-
-				Graph impGraph = impMethFoo.getExternalGraph();
-				Graph conGraph = conMethFoo.getExternalGraph();
-				verifyMethodEdges(impGraph.dataFlowEdges, conGraph.dataFlowEdges, impMethFoo.context,
-						conMethFoo.context);
-				verifyMethodEdges(impGraph.controlFlowEdges, conGraph.controlFlowEdges, impMethFoo.context,
-						conMethFoo.context);
-				System.out.println("Full Graph");
-				impMethFoo.graph.Dotty("\"Implementation:" + impMethBinding.getName() + "\"");
-				conMethFoo.graph.Dotty("\"Contract:" + conMethBinding.getName() + "\"");
-				System.out.println("External Graph");
-				impGraph.Dotty("\"Implementation:" + impMethBinding.getName() + "\"");
-				conGraph.Dotty("\"Contract:" + conMethBinding.getName() + "\"");
 			}
 		}
 	}
@@ -121,10 +135,11 @@ public class DataflowVisitor extends ASTVisitor {
 		}
 	}
 
-	public static QualifiedName GetImplementationContractName(String implementationName) {
-		for (Map.Entry<QualifiedName, QualifiedName> moduleMapping : moduleMappings.entrySet()) {
-			if (moduleMapping.getKey().toString().equals(implementationName)) {
-				return moduleMapping.getValue();
+	public static String GetInterfaceContractName(String interfaceName) {
+		for (Map.Entry<String, String> contractMapping : contractMappings.entrySet()) {
+			String key = contractMapping.getKey();
+			if (key.equals(interfaceName)) {
+				return contractMapping.getValue();
 			}
 		}
 
@@ -155,8 +170,13 @@ public class DataflowVisitor extends ASTVisitor {
 	}
 
 	private static boolean isMapsToAnnotation(ASTNode n) {
-		System.out.println(((Annotation) n).getTypeName());
-		return n instanceof Annotation && ((Annotation) n).getTypeName().toString().equals("MapsTo");
+		if (n instanceof Annotation) {
+			Annotation a = (Annotation) n;
+			String annoTypeName = a.getTypeName().toString();
+			return annoTypeName.equals("MapsTo") || annoTypeName.equals("Target");
+		}
+
+		return false;
 	}
 
 	private void SetDataflowNode(ASTNode node, Node exp) {
@@ -214,12 +234,51 @@ public class DataflowVisitor extends ASTVisitor {
 	// ---------------------------------------------------------------------------------------------------------------------------
 
 	@Override
+	public boolean visit(ImportDeclaration node) {
+		return false;
+	}
+
+	@Override
+	public boolean visit(UsesDirective node) {
+		return false;
+	}
+
+	@Override
+	public boolean visit(PackageDeclaration node) {
+		return false;
+	}
+
+	@Override
+	public boolean visit(ProvidesDirective node) {
+		return false;
+	}
+
+	@Override
 	public void endVisit(ProvidesDirective node) {
 		super.endVisit(node);
 		QualifiedName contractName = (QualifiedName) node.getName();
 		// assume implementation only implement one contract
 		QualifiedName implementationName = (QualifiedName) node.implementations().get(0);
 		DataflowVisitor.moduleMappings.put(implementationName, contractName);
+	}
+
+	@Override
+	public void endVisit(NormalAnnotation node) {
+		String name = node.getTypeName().toString();
+		if (name.equals("SecurityContract")) {
+			String packageName = ((CompilationUnit) node.getParent().getParent()).getPackage().getName().toString();
+			String itface = ((TypeDeclaration) node.getParent()).getName().toString();
+			String securityContractName = ((StringLiteral) ((MemberValuePair) node.values().get(0)).getValue())
+					.getLiteralValue();
+			String fullyQualifiedName = String.format("%s.%s", packageName, itface);
+			DataflowVisitor.contractMappings.put(fullyQualifiedName, securityContractName);
+		} else if (name.equals("MapsTo")) {
+			String contractFieldName = ((StringLiteral) ((MemberValuePair) node.values().get(0)).getValue())
+					.getLiteralValue();
+			String implementationFieldName = ((VariableDeclarationFragment) ((FieldDeclaration) node.getParent())
+					.fragments().toArray()[0]).getName().toString();
+			fieldMappings.put(implementationFieldName, contractFieldName);
+		}
 	}
 
 	// @Override
@@ -281,18 +340,13 @@ public class DataflowVisitor extends ASTVisitor {
 	}
 
 	@Override
-	public boolean visit(ImportDeclaration node) {
-		return false;
-	}
-
-	@Override
 	public void endVisit(SimpleName node) {
 		super.endVisit(node);
 		IBinding binding = node.resolveBinding();
 		if (binding instanceof IVariableBinding) {
 			IVariableBinding varbinding = (IVariableBinding) binding;
 			if (varbinding.isField() && this_node != null) {
-				Node expr = this_node.getField(varbinding);
+				Node expr = this_node.getField(varbinding, fieldMappings);
 				SetDataflowNode(node, expr);
 				return;
 			}
@@ -309,7 +363,7 @@ public class DataflowVisitor extends ASTVisitor {
 			IVariableBinding varbinding = (IVariableBinding) binding;
 			if (varbinding.isField()) {
 				Node object = GetDataflowNode(node.getQualifier());
-				Node expr = object.getField(varbinding);
+				Node expr = object.getField(varbinding, fieldMappings);
 				current_method.graph.AddControlFlowEdge(object, expr);
 				SetDataflowNode(node, expr);
 				return;
@@ -415,16 +469,29 @@ public class DataflowVisitor extends ASTVisitor {
 	public void endVisit(FieldAccess node) {
 		super.endVisit(node);
 		Node obj = GetDataflowNode(node.getExpression());
-		FieldNode field = obj.getField(node.resolveFieldBinding());
+		FieldNode field = obj.getField(node.resolveFieldBinding(), fieldMappings);
+
 		SetDataflowNode(node, field);
-		
+
 		current_method.graph.AddControlFlowEdge(this_node, field); // is this correct?
 	}
+
+//	public void endVisit(FieldDeclaration node) {
+//		super.endVisit(node);
+////		for (Object modifier : node.modifiers()) {
+////			if (modifier instanceof NormalAnnotation) {
+////				NormalAnnotation normalAnnotation = (NormalAnnotation) modifier;
+////				if (normalAnnotation.getTypeName().toString().equals("MapsTo")) {
+////					fieldMappings.put(((VariableDeclarationFragment)node.fragments().toArray()[0]).getName().toString(), ((MemberValuePair)normalAnnotation.values().toArray()[0]).getValue().toString());
+////				}
+////			}
+////		}
+//	}
 
 	@Override
 	public void endVisit(SuperFieldAccess node) {
 		super.endVisit(node);
-		FieldNode field = this_node.getField(node.resolveFieldBinding());
+		FieldNode field = this_node.getField(node.resolveFieldBinding(), fieldMappings);
 		SetDataflowNode(node, field);
 	}
 
@@ -622,7 +689,12 @@ public class DataflowVisitor extends ASTVisitor {
 	public void postVisit(ASTNode node) {
 		// TODO Auto-generated method stub
 		super.postVisit(node);
-		if (node instanceof Expression)
+		if (shouldCheckExistence(node))
 			GetDataflowNode(node); // test that we have created a node for every expression
+	}
+
+	private boolean shouldCheckExistence(ASTNode node) {
+		return node instanceof Expression && !(node instanceof MarkerAnnotation) && !(node instanceof NormalAnnotation)
+				&& !(node instanceof SingleMemberAnnotation);
 	}
 }
