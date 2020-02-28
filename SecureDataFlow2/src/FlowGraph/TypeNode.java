@@ -1,5 +1,6 @@
 package FlowGraph;
 
+import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 
 public class TypeNode extends Node
