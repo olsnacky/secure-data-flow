@@ -2,9 +2,18 @@ package FlowGraph;
 
 import java.util.Map;
 
+import org.eclipse.jdt.core.dom.IMethodBinding;
+
 public class MethodFoo {
 	public MethodContext context = new MethodContext();
-	public Graph graph = new Graph();
+	public Graph graph;
+	
+	private final IMethodBinding methodBinding;
+	
+	public MethodFoo(IMethodBinding methodBinding) {
+		this.methodBinding = methodBinding;
+		graph = new Graph(methodBinding);
+	}
 
 	public Graph getVerificationGraph(boolean isImplementation) {
 //		for (Node node : context.args) {
@@ -17,7 +26,7 @@ public class MethodFoo {
 		this.graph.Closure();
 
 		if (isImplementation) {
-			Graph externalGraph = new Graph();
+			Graph externalGraph = new Graph(this.methodBinding);
 			for (DataFlowPath dataFlowPath : graph.dataFlowPaths) {
 				if (dataFlowPath.isExternal(context)) {
 					externalGraph.dataFlowPaths.add(dataFlowPath);
@@ -45,11 +54,21 @@ public class MethodFoo {
 //				}
 //			}
 			}
+			
+			for (PointsToSameEdge edge : graph.pointsToSameEdges) {
+				if (edge.isExternal(context)) {
+					externalGraph.pointsToSameEdges.add(edge);
+				}
+			}
 
 			return externalGraph;
 		}
 		
 		return this.graph;
+	}
+	
+	public String getFullName() {
+		return methodBinding.getDeclaringClass().getQualifiedName() + "." + methodBinding.getName();
 	}
 
 //	private void addKnownNodeAndFields(Node node) {

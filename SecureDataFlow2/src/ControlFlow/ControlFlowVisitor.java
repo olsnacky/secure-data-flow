@@ -8,6 +8,7 @@ import java.util.Map;
 import org.eclipse.jdt.core.dom.*;
 
 import FlowGraph.Graph;
+import FlowGraph.MethodFoo;
 
 
 public class ControlFlowVisitor extends ASTVisitor
@@ -302,10 +303,11 @@ public class ControlFlowVisitor extends ASTVisitor
     
 // -----------------------------------------------------------------------------------------
     
-    private void StartNewMethod(IMethodBinding method)
+    private void StartNewMethod(IMethodBinding methodBinding)
     {
-        System.out.println("StartNewMethod " + method);
-        CFG = new ControlFlowGraph(method, QUT.DataflowVisitor.methods.get(method).graph);
+        System.out.println("StartNewMethod " + methodBinding);
+        MethodFoo method = QUT.DataflowVisitor.methods.get(methodBinding);
+        CFG = new ControlFlowGraph(methodBinding, method);
         CFG.cu = cu;
         blocks.clear();        
     }

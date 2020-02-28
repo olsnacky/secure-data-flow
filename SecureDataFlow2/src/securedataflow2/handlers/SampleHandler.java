@@ -1,5 +1,7 @@
 package securedataflow2.handlers;
 
+import java.util.List;
+
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -51,9 +53,16 @@ public class SampleHandler extends AbstractHandler {
 					}
 				}
 			}
-//        QUT.DataflowVisitor.Closure();
-			QUT.DataflowVisitor.Verify();
-			System.out.println("Completely done !!!!");
+			List<String> verificationErrors = QUT.DataflowVisitor.Verify();
+			if (verificationErrors.size() == 0) {
+				QUT.DataflowVisitor.verifyNoninterferencePolicy();
+			} else {
+				System.out.println("VERIFICATION FAILED");
+				for (String error : verificationErrors) {
+					System.out.println(error);
+				}
+			}
+			System.out.println("FIN");
 		} catch (Exception e) {
 			System.err.println("Exception " + e);
 		}

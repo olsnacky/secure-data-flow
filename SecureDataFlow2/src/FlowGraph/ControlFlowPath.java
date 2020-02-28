@@ -2,27 +2,20 @@ package FlowGraph;
 
 import java.util.List;
 
-public class ControlFlowPath extends Edge
-{
-    public ControlFlowPath(Node src, Node dest, List why) 
-    {
-        super(src, dest, why);
-    }
+public class ControlFlowPath extends Edge {
+	public final boolean isWellFormed;
 
-    public boolean isInconsistent()
-    {
-        if (src instanceof LabelNode && dest instanceof LabelNode)
-        {
-        	System.out.println(src.name == "high"  && dest.name == "low");
-            return src.name == "high"  && dest.name == "low";
-        }
-        return false;
-    }
+	public ControlFlowPath(Node src, Node dest, List why, boolean isWellFormed) {
+		super(src, dest, why);
+		this.isWellFormed = isWellFormed;
+	}
 
-    protected String arrow()
-    {
-        return "-->*";
-    }
+	public boolean violatesNoninterference() {
+		return src.isHigh() && dest.isLow();
+	}
+
+	@Override
+	protected String arrow() {
+		return "-->*";
+	}
 }
-
-

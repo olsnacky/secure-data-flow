@@ -1,10 +1,12 @@
 package FlowGraph;
 
+import org.eclipse.jdt.core.dom.IMethodBinding;
+
 public class LabelNode extends Node
 {
-    public LabelNode(String name)
+    public LabelNode(String name, IMethodBinding methodBinding)
     {
-        super(name);
+        super(name, methodBinding);
     }
 
     public String NodeChar()

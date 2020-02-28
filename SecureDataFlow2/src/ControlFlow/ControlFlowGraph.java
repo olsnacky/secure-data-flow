@@ -14,6 +14,7 @@ import java.util.TreeSet;
 import org.eclipse.jdt.core.dom.*;
 
 import FlowGraph.Graph;
+import FlowGraph.MethodFoo;
 import QUT.DataflowVisitor;
 
 public class ControlFlowGraph {
@@ -21,12 +22,14 @@ public class ControlFlowGraph {
 	public Statement end_of_method, start_of_method;
 	private Map<Statement, List<Statement>> predecessors = new HashMap<Statement, List<Statement>>();
 	private Map<Statement, List<Statement>> successors = new HashMap<Statement, List<Statement>>();
-	private IMethodBinding method;
-	private Graph graph;
+	private IMethodBinding methodBinding;
+//	private Graph graph;
+	private MethodFoo method;
 
-	public ControlFlowGraph(IMethodBinding method, Graph graph) {
+	public ControlFlowGraph(IMethodBinding methodBinding, MethodFoo method) {
+		this.methodBinding = methodBinding;
+//		this.graph = method.graph;
 		this.method = method;
-		this.graph = graph;
 	}
 
 	private boolean isSpecial(Statement stmt) {
@@ -279,7 +282,7 @@ public class ControlFlowGraph {
 
 	private void PropagateDown(Expression src, ASTNode dstRoot) {
 		// System.out.println("PropagateDown(" + Dump(src) + "," + Dump(dstRoot) + ")");
-		ExpressionVisitor visitor = new ExpressionVisitor(src, graph);
+		ExpressionVisitor visitor = new ExpressionVisitor(src, this.method);
 		dstRoot.accept(visitor);
 	}
 
@@ -291,27 +294,34 @@ public class ControlFlowGraph {
 		case "IfStatement":
 			srcExpr = ((IfStatement) src).getExpression();
 			break;
-		case "ForStatement":
-			srcExpr = ((ForStatement) src).getExpression();
-			break;
+//		case "ForStatement":
+//			srcExpr = ((ForStatement) src).getExpression();
+//			break;
 //        case "EnhancedForStatement":
 //        	srcExpr = ((EnhancedForStatement)src).getExpression();
 //            break;
 		case "WhileStatement":
 			srcExpr = ((WhileStatement) src).getExpression();
 			break;
-		case "SwitchStatement":
-			srcExpr = ((SwitchStatement) src).getExpression();
-			break;
-		case "EmptyStatement": // Fixme: special entry statement???
-			return;
+//		case "SwitchStatement":
+//			srcExpr = ((SwitchStatement) src).getExpression();
+//			break;
+		case "EmptyStatement": // special entry statement???
+			if (src.equals(this.start_of_method)) {
+				srcExpr = null;
+				break;
+			} else {
+				return;
+			}
 		default:
 			throw new RuntimeException("Unexpected source type " + src.getClass().getSimpleName());
 		}
 
 		switch (dst.getClass().getSimpleName()) {
 		case "ReturnStatement":
-			AddControlDependence(srcExpr, ((ReturnStatement) dst).getExpression());
+			ReturnStatement returnStatement = (ReturnStatement) dst;
+			AddControlDependence(srcExpr, ((ReturnStatement) returnStatement).getExpression());
+			AddControlDependence(srcExpr, returnStatement);
 			break;
 		case "ExpressionStatement":
 			AddControlDependence(srcExpr, ((ExpressionStatement) dst).getExpression());
@@ -323,19 +333,19 @@ public class ControlFlowGraph {
 			for (Object frag : ((VariableDeclarationStatement) dst).fragments())
 				AddControlDependence(srcExpr, (VariableDeclarationFragment) frag);
 			break;
-		case "ForStatement":
-			AddControlDependence(srcExpr, ((ForStatement) dst).getExpression());
-			for (Object init : ((ForStatement) dst).initializers())
-				AddControlDependence(srcExpr, (Expression) init);
-			// Fixme: increment expressions
-			break;
+//		case "ForStatement":
+//			AddControlDependence(srcExpr, ((ForStatement) dst).getExpression());
+//			for (Object init : ((ForStatement) dst).initializers())
+//				AddControlDependence(srcExpr, (Expression) init);
+		// Fixme: increment expressions
+//			break;
 //        case "EnhancedForStatement":
 //            AddControlDependence(srcExpr, ((EnhancedForStatement)dst).getExpression());
 //            // Fixme: increment expressions
 //            break; 
-		case "SwitchCase":
-		case "BreakStatement":
-			break;
+//		case "SwitchCase":
+//		case "BreakStatement":
+//			break;
 		case "IfStatement":
 			AddControlDependence(srcExpr, ((IfStatement) dst).getExpression());
 			break;
