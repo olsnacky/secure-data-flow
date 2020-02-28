@@ -8,6 +8,7 @@ import java.util.Map;
 import org.eclipse.jdt.core.dom.*;
 
 import FlowGraph.Graph;
+import FlowGraph.MethodFoo;
 
 
 public class ControlFlowVisitor extends ASTVisitor
@@ -53,8 +54,10 @@ public class ControlFlowVisitor extends ASTVisitor
             {
                 ControlFlowBlock stmt = blocks.get(node.statements().get(i));
                 
-                if (i + 1 < node.statements().size())
-                    CFG.AddControlFlowEdges(stmt.last, blocks.get(node.statements().get(i + 1)).head);
+                if (i + 1 < node.statements().size()) {
+                	Statement head = blocks.get(node.statements().get(i + 1)).head;
+                    CFG.AddControlFlowEdges(stmt.last, head);
+                }
 
                 Propagate(stmt, parent, i == node.statements().size() - 1);
             }
@@ -108,6 +111,14 @@ public class ControlFlowVisitor extends ASTVisitor
         super.endVisit(node);
         PreTestedLoop(node, node.getBody());
     }
+    
+//    @Override
+//    public void endVisit(EnhancedForStatement node)
+//    {
+//        // for ( Declaration Initializers; Condition; Incrementors ) Statement
+//        super.endVisit(node);
+//        PreTestedLoop(node, node.getBody());
+//    }
 
     @Override
     public void endVisit(SwitchStatement node)
@@ -292,10 +303,11 @@ public class ControlFlowVisitor extends ASTVisitor
     
 // -----------------------------------------------------------------------------------------
     
-    private void StartNewMethod(IMethodBinding method)
+    private void StartNewMethod(IMethodBinding methodBinding)
     {
-        System.out.println("StartNewMethod " + method);
-        CFG = new ControlFlowGraph(method, QUT.DataflowVisitor.methods.get(method).graph);
+        System.out.println("StartNewMethod " + methodBinding);
+        MethodFoo method = QUT.DataflowVisitor.methods.get(methodBinding);
+        CFG = new ControlFlowGraph(methodBinding, method);
         CFG.cu = cu;
         blocks.clear();        
     }

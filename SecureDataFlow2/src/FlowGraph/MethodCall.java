@@ -4,6 +4,8 @@ import java.util.*;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
 
 public class MethodCall
 {
@@ -14,7 +16,7 @@ public class MethodCall
     public List<Node> args;
     public Node return_value;
     public ASTNode callpoint;
-    public List<TypeNode> already_expanded = new ArrayList<TypeNode>();
+    public List<ITypeBinding> already_expanded = new ArrayList<ITypeBinding>();
 
     public MethodCall(ASTNode callpoint, Node recv, IMethodBinding method, List<Node> args, Node return_value)
     {

@@ -1,5 +1,7 @@
 package securedataflow2.handlers;
 
+import java.util.List;
+
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -19,6 +21,7 @@ import QUT.*;
 
 /**
  * Our sample handler extends AbstractHandler, an IHandler base class.
+ * 
  * @see org.eclipse.core.commands.IHandler
  * @see org.eclipse.core.commands.AbstractHandler
  */
@@ -29,39 +32,40 @@ public class SampleHandler extends AbstractHandler {
 	public SampleHandler() {
 	}
 
-    private void AnalyseCompilationUnit(ICompilationUnit unit) throws JavaModelException
-    {
-        ASTParser parser = ASTParser.newParser(AST.JLS10);
-        parser.setResolveBindings(true);
-        parser.setSource(unit);
-        parser.setKind(ASTParser.K_COMPILATION_UNIT);
-        
-        QUT.Analyzer analyzer = new QUT.Analyzer();
-        analyzer.Analyze(parser);
-    }
-    
-  public Object execute(ExecutionEvent event) throws ExecutionException
-  {
-      try
-      {
-        for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects())   
-        {
-            for (IPackageFragment mypackage : JavaCore.create(project).getPackageFragments())
-            {     
-                for (ICompilationUnit unit : mypackage.getCompilationUnits())
-                {
-                    System.out.println("project " + project.getName() + ", package " + mypackage.getElementName() + ", unit " + unit.getElementName());
-                    AnalyseCompilationUnit(unit);                   
-                }
-            }
-        }
-        QUT.DataflowVisitor.Closure();
-        System.out.println("Completely done !!!!");
-      }
-      catch (Exception e)
-      {
-          System.err.println("Exception " + e);
-      }
-    return null;
-  }
+	private void AnalyseCompilationUnit(ICompilationUnit unit) throws JavaModelException {
+		ASTParser parser = ASTParser.newParser(AST.JLS10);
+		parser.setResolveBindings(true);
+		parser.setSource(unit);
+		parser.setKind(ASTParser.K_COMPILATION_UNIT);
+
+		QUT.Analyzer analyzer = new QUT.Analyzer();
+		analyzer.Analyze(parser);
+	}
+
+	public Object execute(ExecutionEvent event) throws ExecutionException {
+		try {
+			for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+				for (IPackageFragment mypackage : JavaCore.create(project).getPackageFragments()) {
+					for (ICompilationUnit unit : mypackage.getCompilationUnits()) {
+						System.out.println("project " + project.getName() + ", package " + mypackage.getElementName()
+								+ ", unit " + unit.getElementName());
+						AnalyseCompilationUnit(unit);
+					}
+				}
+			}
+			List<String> verificationErrors = QUT.DataflowVisitor.Verify();
+			if (verificationErrors.size() == 0) {
+				QUT.DataflowVisitor.verifyNoninterferencePolicy();
+			} else {
+				System.out.println("VERIFICATION FAILED");
+				for (String error : verificationErrors) {
+					System.out.println(error);
+				}
+			}
+			System.out.println("FIN");
+		} catch (Exception e) {
+			System.err.println("Exception " + e);
+		}
+		return null;
+	}
 }
